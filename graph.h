@@ -74,14 +74,39 @@ public:
 	// overloaded output (generates graphviz format)
 	friend ostream & operator<<(ostream &out, Graph<T> &graph) {
 		// FILL IN
+        	string conn;
+	        if (graph.directed) {
+	            cout << "digraph {" << endl;
+	            conn = "--";
+	        } else {
+	            cout << "graph { " << endl;
+	            conn = "->";
+	        }
 
-		return out;
+	        for (typename Graph<T>::vertex_iterator vert = graph.begin(); vert != graph.end(); vert++) {
+    	            Graph<T>::neighbor_iterator neighs(graph, const_cast<T&>(vert->first));
+		    for (typename vector<T>::const_iterator neigh = vert->second.begin(); neigh != vert->second.end(); neigh++) {
+         		    cout << vert->first << conn << *neigh << ";" << endl;
+            	    }
+        	}
+
+			cout << "}" << endl;
+			return out;
 	}
 
 	// overloaded input (assumes graphviz format)
 	friend istream & operator>>(istream &in, Graph<T> &graph) {
 		// FILL IN
-
+		string kind;
+        	string tmp;
+	        in >> kind;
+	        graph.setDirected(kind == "digraph");
+	        in >> tmp; // eat {
+	        T left, right;
+	        while (in) {
+	            in >> left >> tmp >> right >> tmp;
+	            graph.insert(left, right);
+	        }
 		return in;
 	}
 

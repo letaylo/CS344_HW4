@@ -7,6 +7,7 @@
 #include <stack>
 #include <assert.h>
 #include <time.h>
+#include <tr1/random>
 using namespace std;
 
 
@@ -18,10 +19,20 @@ using namespace std;
 template <class T>
 Graph<T>::Graph( const vector<T> &vertex_set, bool is_directed )
 {
+	std::tr1::variate_generator<std::tr1::mt19937, std::tr1::uniform_real<> > rng(std::tr1::mt19937(time(NULL)), std::tr1::uniform_real<>());
+
 	size = vertex_set.size();
 	directed = is_directed;
 
 	// FILL IN
+	double unif_prob = 1/5.0;
+	for (typename vector<T>::const_iterator it = vertex_set.begin(); it != vertex_set.end(); it++) {
+        for (typename vector<T>::const_iterator it2 = vertex_set.begin(); it2 != vertex_set.end(); it2++) {
+            if (rng() < unif_prob) {
+                insert(*it, *it2);
+            }
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////
@@ -50,6 +61,9 @@ template <class T>
 void Graph<T>::insert( const T &u, const T &v )
 {
 	adjacency_list[u].push_back(v);
+	if(directed){
+		adjacency_list[v].push_back(u);
+	}
 }
 
 
@@ -107,6 +121,26 @@ Graph<T> Graph<T>::BFS( const T & start_vertex )
 	queue<T> BFS_Queue;
 
 	// FILL IN
+	BFS_Tree[start_vertex].color = BLACK;
+    BFS_Tree[start_vertex].distance = 0;
+    BFS_Queue.push(start_vertex);
+
+    while (!BFS_Queue.empty()) {
+        const T & e = BFS_Queue.front();
+        cout << "Processing node from queue: " << e << endl;
+        BFS_Queue.pop();
+        BFS_Vertex<T> &me = BFS_Tree[e];
+        Graph<T>::neighbor_iterator neighs = Graph<T>::neighbor_iterator(*this, const_cast<T&>(e));
+        if (neighs.end()) { cout << "No neighbors :(" << endl; continue; }
+        for (T neigh = neighs.begin(); !neighs.end(); neigh = neighs.next()) {
+            if (BFS_Tree.find(neigh) == BFS_Tree.end()) {
+                BFS_Tree[neigh].color = BLACK;
+                BFS_Tree[neigh].distance = me.distance + 1;
+                BFS_Queue.push(neigh);
+                outputTree.insert(e, neigh);
+            }
+        }
+    }
 
 	return outputTree;
 }
@@ -124,6 +158,30 @@ struct DFS_Vertex {
 	T previous;
 };
 
+template <class T>
+void
+DFS_Visit(Graph<T> *graph, Graph<T> *outputTree, map<T, DFS_Vertex<T> > &DFS_Tree, const T &node, int &time) {
+    for (typename Graph<T>::vertex_iterator verts = graph->begin(); verts != graph->end(); verts++) {
+        DFS_Vertex<T> &vert = DFS_Tree[verts->first];
+        if (vert.color == WHITE) {
+            time++;
+            vert.color = GRAY;
+            typename Graph<T>::neighbor_iterator neighs = typename Graph<T>::neighbor_iterator((Graph<T>&)graph, const_cast<T&>(verts->first));
+            for (T neigh = neighs.begin(); !neighs.end(); neigh = neighs.next()) {
+                DFS_Vertex<T> &neigh_vert = DFS_Tree[neigh];
+                if (neigh_vert.color == WHITE) {
+                    neigh_vert.previous = verts->first;
+                    outputTree->insert(verts->first, neigh);
+                    DFS_Visit(graph, outputTree, DFS_Tree, neigh, time);
+                }
+            }
+            vert.color = BLACK;
+            time++;
+            vert.finish_time = time;
+        }
+    }
+}
+
 
 template <class T>
 Graph<T> Graph<T>::DFS()
@@ -133,6 +191,18 @@ Graph<T> Graph<T>::DFS()
 	stack<T> DFS_Stack;
 
 	// FILL IN
+	
+	int time = 0;
+
+    for (typename Graph<T>::vertex_iterator verts = this->begin(); verts != this->end(); verts++) {
+        DFS_Tree[verts->first].color = WHITE;
+    }
+
+    for (typename Graph<T>::vertex_iterator verts = this->begin(); verts != this->end(); verts++) {
+        if (DFS_Tree[verts->first].color == WHITE) {
+            DFS_Visit<T>(this, &outputTree, DFS_Tree, verts->first, time);
+        }
+    }
 
 	return outputTree;	
 }
